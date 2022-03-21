@@ -141,6 +141,14 @@ class LLAnalyser {
     nonTerminals: Set<string>
     rules: Map<string, Rule[]>
 
+    static skipCarriageReturn: SymboleReader
+    static skipSpacing: SymboleReader
+
+    static {
+        this.skipCarriageReturn = new SymboleReader(/\n/, _ => null)
+        this.skipSpacing = new SymboleReader(/\t/, _ => null)
+    }
+
     constructor() {
         this.symboleReaders = []
         this.terminals = new Set()
@@ -269,6 +277,24 @@ class LLAnalyser {
             }
         }
         return null
+    }
+
+    /**
+     * 
+     * @param {string} type 
+     * @returns 
+     */
+    static floatWithExponent(type: string): SymboleReader {
+        return new SymboleReader(/([-+]?\d*\.?\d+)(?:[eE]([-+]?\d+))?/, str => new SymboleToken(type, Number(str)))
+    }
+
+    /**
+     * 
+     * @param {string} type 
+     * @returns 
+     */
+    static idString(type: string): SymboleReader {
+        return new SymboleReader(/[a-zA-Z0-9][_a-zA-Z0-9]*/, str => new SymboleToken(type, str))
     }
 
 }

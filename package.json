@@ -9,7 +9,7 @@
         "build-esnext": "tsc --project ./tsconfig-esnext.json",
         "build-commonjs": "tsc --project ./tsconfig-commonjs.json",
         "clean": "rm -r js/* && rm -r commonjs/*",
-        "build-test": "npm run build && npm test",
+        "build-test": "npm run build-commonjs && npm test",
         "test": "mocha tests/index.test.js"
     },
     "author": "Kimiru_Laeli",
