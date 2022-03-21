@@ -78,4 +78,42 @@ describe('LLAnalyser Tests', () => {
 
         })
     })
+    describe('Custom parsing function', () => {
+        it('Should parse number "12.5e-6" with floatWithExponent SymboleReader', () => {
+            let sr = LLAnalyser.floatWithExponent('nbr')
+
+            let ok = sr.regex.exec('12.5e-6')
+            assert.notEqual(ok, null)
+        })
+        it('Should be able to parse "a" with idString SymboleReader', () => {
+            let sr = LLAnalyser.idString('nbr')
+
+            let ok = sr.regex.exec('a')
+            assert.notEqual(ok, null)
+        })
+        it('Should be able to parse "a_" with idString SymboleReader', () => {
+            let sr = LLAnalyser.idString('nbr')
+
+            let ok = sr.regex.exec('a_')
+            assert.notEqual(ok, null)
+        })
+        it('Should be able to parse "a0_0De7_456totoBA" with idString SymboleReader', () => {
+            let sr = LLAnalyser.idString('nbr')
+
+            let ok = sr.regex.exec('a0_0De7_456totoBA')
+            assert.notEqual(ok, null)
+        })
+        it('Should be able to parse "mySimpleCamelCaseIDN1" with idString SymboleReader', () => {
+            let sr = LLAnalyser.idString('nbr')
+
+            let ok = sr.regex.exec('mySimpleCamelCaseIDN1')
+            assert.notEqual(ok, null)
+        })
+        it('Should be able to parse "my_simple_snake_case_id_n_1" with idString SymboleReader', () => {
+            let sr = LLAnalyser.idString('nbr')
+
+            let ok = sr.regex.exec('my_simple_snake_case_id_n_1')
+            assert.notEqual(ok, null)
+        })
+    })
 })
