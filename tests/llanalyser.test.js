@@ -1,6 +1,24 @@
 const assert = require('assert').strict
 const { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } = require('../commonjs/LLAnalyser')
 
+/**
+ * 
+ * @param {Set<string} s1 
+ * @param {Set<string>} s2 
+ */
+function setsEqual(s1, s2) {
+    if (s1.size != s2.size) {
+        assert.fail(`Received Set(${s1.size}) { ${[...s1].map(e => "'" + e + "'").join(', ')} } Expected  Set(${s2.size}) { ${[...s2].map(e => "'" + e + "'").join(', ')} }`)
+    }
+    for (let value of s1) {
+        if (!s2.has(value)) {
+            return assert.fail(`Received Set(${s1.size}) { ${[...s1].map(e => "'" + e + "'").join(', ')} } Expected  Set(${s2.size}) { ${[...s2].map(e => "'" + e + "'").join(', ')} }`)
+
+
+        }
+    }
+}
+
 describe('LLAnalyser Tests', () => {
     describe("Symboles, Terminals and Rules setup", () => {
         it('Should not throw an error when adding twice the same terminal', () => {
@@ -114,6 +132,131 @@ describe('LLAnalyser Tests', () => {
 
             let ok = sr.regex.exec('my_simple_snake_case_id_n_1')
             assert.notEqual(ok, null)
+        })
+    })
+    describe('First of rule', () => {
+        it('Should return EOF, when only rule is epsilon', () => {
+            let lla = new LLAnalyser()
+            lla.addRule(new Rule('S', []))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('S')[0])
+            let expected = new Set(['EOF'])
+            setsEqual(firsts, expected)
+
+        })
+        it('Should return an error when symbole is not known', () => {
+            let lla = new LLAnalyser()
+            lla.addRule(new Rule('S', ['a']))
+
+            assert.throws(() => {
+                lla.firstsOfRule(lla.rules.get('S')[0])
+            }, /Unknown symbole/)
+
+        })
+        it('Should return EOF, when multiple rules are epsilon', () => {
+            let lla = new LLAnalyser()
+            lla.addRule(new Rule('S', ['A']))
+            lla.addRule(new Rule('A', ['B']))
+            lla.addRule(new Rule('B', ['C']))
+            lla.addRule(new Rule('C', []))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('C')[0])
+            let expected = new Set(['EOF'])
+            setsEqual(firsts, expected)
+
+        })
+        it('Should return empty, when grammar is rigged', () => {
+            let lla = new LLAnalyser()
+            lla.addRule(new Rule('S', ['A']))
+            lla.addRule(new Rule('B', ['C']))
+            lla.addRule(new Rule('C', []))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('C')[0])
+            let expected = new Set([])
+            setsEqual(firsts, expected)
+
+        })
+        it('Should return first symbole when found', () => {
+            let lla = new LLAnalyser()
+            lla.addTerminal('a')
+
+            lla.addRule(new Rule('S', ['a']))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('S')[0])
+            let expected = new Set(['a'])
+            setsEqual(firsts, expected)
+        })
+
+        it('Should return first of next nonterminals when found', () => {
+            let lla = new LLAnalyser()
+            lla.addTerminal('a')
+
+            lla.addRule(new Rule('S', ['A']))
+            lla.addRule(new Rule('A', ['a']))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('S')[0])
+            let expected = new Set(['a'])
+            setsEqual(firsts, expected)
+        })
+        it('Should return first of next multiple nonterminals when found', () => {
+            let lla = new LLAnalyser()
+            lla.addTerminal('a')
+
+            lla.addRule(new Rule('S', ['A']))
+            lla.addRule(new Rule('A', ['B']))
+            lla.addRule(new Rule('B', ['C']))
+            lla.addRule(new Rule('C', ['a']))
+
+            let firsts = lla.firstsOfRule(lla.rules.get('S')[0])
+            let expected = new Set(['a'])
+            setsEqual(firsts, expected)
+        })
+    })
+    describe('Analysis table', () => {
+        it('Should be empty when no rules', () => {
+            let lla = new LLAnalyser()
+
+            let at = lla.getAnalysisTable()
+
+            assert.equal(at.size, 1)
+            assert.equal(at.get('S').size, 1)
+            assert.equal(at.get('S').get('EOF'), null)
+        })
+        it('Should fill in with given rules', () => {
+            let lla = new LLAnalyser()
+            lla.addTerminal('a', 'b')
+
+            lla.addRule(
+                new Rule('S', ['A']),
+                new Rule('A', ['a']),
+                new Rule('A', ['b']),
+            )
+
+            let at = lla.getAnalysisTable()
+
+            assert.equal(at.size, 2)
+            assert.equal(at.get('S').size, 3)
+            assert.equal(at.get('A').size, 3)
+            assert.equal(at.get('S').get('a'), lla.rules.get('S')[0])
+            assert.equal(at.get('S').get('b'), lla.rules.get('S')[0])
+            assert.equal(at.get('A').get('a'), lla.rules.get('A')[0])
+            assert.equal(at.get('A').get('b'), lla.rules.get('A')[1])
+        })
+        it('Should throw an error on conflict', () => {
+            let lla = new LLAnalyser()
+            lla.addTerminal('a')
+
+            lla.addRule(
+                new Rule('S', ['A']),
+                new Rule('S', ['B']),
+                new Rule('A', ['a']),
+                new Rule('B', ['a'])
+            )
+
+            assert.throws(() => {
+                let at = lla.getAnalysisTable()
+            }, /AnalysisTable Conflict/)
+
         })
     })
 })

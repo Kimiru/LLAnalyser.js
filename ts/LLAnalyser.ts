@@ -133,7 +133,11 @@ class ASTStep {
 }
 
 
-
+/**
+ * LL(1) Grammar Parser/Analyser
+ * 
+ * Used to simply create a parser able to read an input with a given grammar and return a custom Abtract syntaxe tree
+ */
 class LLAnalyser {
 
     symboleReaders: SymboleReader[]
@@ -278,6 +282,111 @@ class LLAnalyser {
         }
         return null
     }
+
+    /**
+     * Calculate and return the analysis table of the stored gammar
+     * 
+     * @returns {Map<string, Map<string, Rule>>}
+     */
+    getAnalysisTable(): Map<string, Map<string, Rule>> {
+        let analysisTable: Map<string, Map<string, Rule>> = new Map()
+        for (let nonTerminal of this.nonTerminals) {
+            analysisTable.set(nonTerminal, new Map())
+            for (let terminal of this.terminals)
+                analysisTable.get(nonTerminal).set(terminal, null)
+        }
+
+        for (let [_, rules] of this.rules) {
+            for (let rule of rules) {
+                let firsts: Set<string> = this.firstsOfRule(rule)
+                for (let first of firsts) if (!analysisTable.get(rule.nonTerminal).get(first))
+                    analysisTable.get(rule.nonTerminal).set(first, rule)
+                else throw new Error(`AnalysisTable Conflict: Incompatible rules\n${rule.nonTerminal}->${analysisTable.get(rule.nonTerminal).get(first).symboles.join('')} firsts: ${this.firstsOfRule(analysisTable.get(rule.nonTerminal).get(first))}\n${rule.nonTerminal}->${rule.symboles.join('')} firsts: ${firsts}\nPlease, check for firsts and follow`)
+            }
+        }
+
+        return analysisTable
+    }
+
+    /**
+     * 
+     * @param {Rule} rule 
+     * @returns {Set<string>}
+     */
+    firstsOfRule(rule: Rule): Set<string> {
+
+        let terminal: Set<string> = new Set() // Result
+        let firsts: Set<string> = new Set() // Nonterminals for which we need to find firsts
+        let follow: Set<string> = new Set() // Nonterminals for which we need to find follows
+        let ignoreFirst: Set<string> = new Set() // Nonterminals for which we already found firsts
+        let ignoreFollow: Set<string> = new Set() // Nonterminals for which we already found follows
+
+        if (rule.symboles.length) // If not epsilon
+            if (this.terminals.has(rule.symboles[0])) // If first symbole is a terminal
+                terminal.add(rule.symboles[0])
+            else // If first symbole is a nonterminal, need to check for its first
+                firsts.add(rule.symboles[0])
+        else // If epsilon, need to check for follow
+            follow.add(rule.nonTerminal)
+
+        while (firsts.size || follow.size) { // If firsts nonterminal or follow of nonterminal need to be treated
+            for (let nonTerminal of [...firsts]) {
+                firsts.delete(nonTerminal)
+                ignoreFirst.add(nonTerminal)
+
+                if (!this.nonTerminals.has(nonTerminal)) throw new Error(`Unknown symbole: ${nonTerminal}`)
+
+                for (let rule of this.rules.get(nonTerminal)) { // For each rules of the nonterminal
+                    if (rule.symboles.length) { // If not epsilon
+                        if (this.terminals.has(rule.symboles[0])) // If first symbole is a terminal
+                            terminal.add(rule.symboles[0])
+                        else if (!ignoreFirst.has(rule.symboles[0])) // If first symbole is a nonterminal and has not already been handled, need to check for its first
+                            firsts.add(rule.symboles[0])
+                    } else if (!ignoreFollow.has(nonTerminal)) // If epsilon, need to check for follow and has not already been handled
+                        follow.add(nonTerminal)
+                }
+            }
+
+            for (let nonTerminal of [...follow]) {
+
+                follow.delete(nonTerminal)
+                ignoreFollow.add(nonTerminal)
+
+                if (!this.nonTerminals.has(nonTerminal)) throw new Error(`Unknown symbole: ${nonTerminal}`)
+
+                if (nonTerminal == 'S') terminal.add('EOF') // If nonterminal is tree root, next is EOF
+                else {
+                    for (let [_, rules] of this.rules) for (let rule of rules) { // For every rule of every nonterminal
+                        if (rule.symboles.length == 0) { // If epsilon, ignore rule
+                            if (!ignoreFollow.has(rule.nonTerminal)) // if not handled, need to find follow
+                                follow.add(rule.nonTerminal)
+                        } else {
+                            let index = rule.symboles.indexOf(nonTerminal)
+                            if (index == -1) continue; // If rule rontaine nonterminal 
+                            index++
+                            if (index >= rule.symboles.length) { // If nonterminal is last symbole
+                                if (!ignoreFollow.has(rule.nonTerminal)) // if not handled, need to find follow
+                                    follow.add(rule.nonTerminal)
+                            } else { // If not last symbole
+                                let symbole = rule.symboles[index] // Get next symbole
+                                if (this.terminals.has(symbole)) // If such symbole is a terminal, take note
+                                    terminal.add(symbole)
+                                else if (!ignoreFirst.has(symbole)) // If sych symbole is a nonterminal and not already handled, need to first its firsts 
+                                    firsts.add(symbole)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return terminal
+    }
+
+
+    /**
+     * UTILITIES
+     */
 
     /**
      * 
