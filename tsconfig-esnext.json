@@ -5,4 +5,7 @@
         "rootDir": "./ts",
         "outDir": "./js"
     },
+    "include": [
+        "ts/**/*"
+    ]
 }
