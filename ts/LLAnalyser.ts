@@ -65,6 +65,33 @@ class SymboleReader {
         this.tokenGenerator = tokenGenerator
     }
 
+
+    /**
+     * UTILITIES
+     */
+
+    static skipCarriageReturn() { return new SymboleReader(/\n/, _ => null) }
+
+    static skipSpacing() { return new SymboleReader(/\s/, _ => null) }
+
+    /**
+     * 
+     * @param {string} type 
+     * @returns 
+     */
+    static floatWithExponent(type: string): SymboleReader {
+        return new SymboleReader(/([-+]?\d*\.?\d+)(?:[eE]([-+]?\d+))?/, str => new SymboleToken(type, Number(str)))
+    }
+
+    /**
+     * 
+     * @param {string} type 
+     * @returns 
+     */
+    static idString(type: string): SymboleReader {
+        return new SymboleReader(/[a-zA-Z0-9][_a-zA-Z0-9]*/, str => new SymboleToken(type, str))
+    }
+
 }
 
 
@@ -79,6 +106,8 @@ class Rule {
     symboles: string[]
     action: Function
 
+    static defaultAction = Rule.array
+
     /**
      * Build a new rule
      * if symboles list is empty, it will be considered as epsilon
@@ -87,10 +116,27 @@ class Rule {
      * @param symboles 
      * @param action 
      */
-    constructor(nonTerminal: string, symboles: string[], action: Function = (...args) => args) {
+    constructor(nonTerminal: string, symboles: string[], action: Function = Rule.defaultAction) {
         this.nonTerminal = nonTerminal
         this.symboles = symboles
         this.action = action
+    }
+
+    static array(...args) { return args }
+
+    static flat(...args) {
+        let result = []
+        for (let arg of args) {
+            if (arg === null) continue
+            if (typeof arg == 'object') result = [...result, ...arg]
+            else result.push(arg)
+        }
+        return result
+    }
+
+    toString(): string {
+
+        return this.nonTerminal + ' -> ' + (this.symboles.length ? this.symboles.join(' ') : 'epsilon')
     }
 
 }
@@ -107,13 +153,12 @@ class ASTStep {
     value: any
     token: any
     children: ASTStep[]
-    rule: any
+    rule: Rule
 
     constructor(type = '') {
 
         this.type = type
         this.value = null
-        this.token = null
         this.children = []
         this.rule = null
 
@@ -122,10 +167,12 @@ class ASTStep {
     flatten() {
 
         let args = []
+
         for (let child of this.children) {
             let flat = child.flatten()
             args.push(flat)
         }
+
         return this.rule?.action(...args) ?? this.value
 
     }
@@ -133,21 +180,17 @@ class ASTStep {
 }
 
 
-
+/**
+ * LL(1) Grammar Parser/Analyser
+ * 
+ * Used to simply create a parser able to read an input with a given grammar and return a custom Abtract syntaxe tree
+ */
 class LLAnalyser {
 
     symboleReaders: SymboleReader[]
     terminals: Set<string>
     nonTerminals: Set<string>
     rules: Map<string, Rule[]>
-
-    static skipCarriageReturn: SymboleReader
-    static skipSpacing: SymboleReader
-
-    static {
-        this.skipCarriageReturn = new SymboleReader(/\n/, _ => null)
-        this.skipSpacing = new SymboleReader(/\t/, _ => null)
-    }
 
     constructor() {
         this.symboleReaders = []
@@ -228,9 +271,10 @@ class LLAnalyser {
                     }
                     break
                 }
-                let unknownPart = input.substring(lastIndex, currentIndex - lastIndex)
 
-                throw new Error(`Cannot progress during tokens splicing, unkown character${unknownPart.length > 1 ? 's' : ''}: "${unknownPart}"`)
+                let unknownPart = input.substring(lastIndex, currentIndex)
+
+                throw new Error(`Cannot progress during tokens splicing, line ${line} column ${column}, unkown character${unknownPart.length > 1 ? 's' : ''}: "${unknownPart}"`)
 
 
             }
@@ -280,22 +324,212 @@ class LLAnalyser {
     }
 
     /**
+     * Calculate and return the analysis table of the stored gammar
      * 
-     * @param {string} type 
-     * @returns 
+     * @returns {Map<string, Map<string, Rule>>}
      */
-    static floatWithExponent(type: string): SymboleReader {
-        return new SymboleReader(/([-+]?\d*\.?\d+)(?:[eE]([-+]?\d+))?/, str => new SymboleToken(type, Number(str)))
+    getAnalysisTable(): Map<string, Map<string, Rule>> {
+        let analysisTable: Map<string, Map<string, Rule>> = new Map()
+        for (let nonTerminal of this.nonTerminals) {
+            analysisTable.set(nonTerminal, new Map())
+            for (let terminal of this.terminals)
+                analysisTable.get(nonTerminal).set(terminal, null)
+        }
+
+        for (let [_, rules] of this.rules) {
+            for (let rule of rules) {
+                let firsts: Set<string> = this.first(rule.symboles[0] ?? null)
+                for (let terminal of firsts) {
+                    if (terminal !== null) {
+                        if (analysisTable.get(rule.nonTerminal).get(terminal) === null) {
+                            analysisTable.get(rule.nonTerminal).set(terminal, rule)
+                        } else
+                            throw new Error(`AnalysisTable Conflict: Incompatible rules\n${analysisTable.get(rule.nonTerminal).get(terminal).toString()} firsts: Set { ${[...this.first(analysisTable.get(rule.nonTerminal).get(terminal).symboles[0] ?? null)].join(', ')} }\n${rule.toString()} firsts: Set { ${[...firsts].join(', ')} }\nPlease, check for firsts and follow`)
+                    } else {
+                        let follows = this.follow(rule.nonTerminal)
+                        for (let terminal of follows) {
+                            if (analysisTable.get(rule.nonTerminal).get(terminal) === null) {
+                                analysisTable.get(rule.nonTerminal).set(terminal, rule)
+                            } else
+                                throw new Error(`AnalysisTable Conflict: Incompatible rules\n${analysisTable.get(rule.nonTerminal).get(terminal).toString()} firsts: Set { ${[...this.first(analysisTable.get(rule.nonTerminal).get(terminal).symboles[0] ?? null)].join(', ')} }\n${rule.toString()} firsts: Set { ${[...firsts].join(', ')} }\nPlease, check for firsts and follow`)
+                        }
+                    }
+                }
+
+            }
+        }
+
+        return analysisTable
+    }
+
+    first(s, ignore = new Set<string>()): Set<string> {
+        if (ignore.has(s)) return new Set()
+        if (s === null) return new Set([null])
+        if (this.terminals.has(s)) return new Set([s])
+        if (this.nonTerminals.has(s)) {
+            ignore.add(s)
+
+            let set: Set<string> = new Set<string>()
+
+            this.rules.get(s).forEach(rule => {
+                if (rule.symboles.length) {
+                    let firsts = this.first(rule.symboles[0], ignore)
+                    firsts.forEach(e => set.add(e))
+                }
+                else set.add(null)
+            })
+
+            if (!set.size) set.add(null)
+
+            return set
+        }
+        throw new Error(`Unknown symbole: "${s}" it is neither a terminal nor a non-terminal`)
+    }
+
+    follow(s, ignore = new Set<string>()): Set<string> {
+        if (ignore.has(s)) return new Set()
+        if (this.nonTerminals.has(s)) {
+            ignore.add(s)
+            let set: Set<string> = new Set<string>()
+            if (s == 'S') set.add('EOF')
+
+            this.rules.forEach(rules => rules.forEach(rule => {
+                if (rule.symboles.includes(s)) {
+                    let index = rule.symboles.indexOf(s)
+
+                    while (index < rule.symboles.length - 1) {
+                        let firsts = this.first(rule.symboles[index + 1])
+                        firsts.forEach(e => { if (e !== null) set.add(e) })
+                        if (firsts.has(null)) index++
+                        else break
+                    }
+                    if (index == rule.symboles.length - 1) {
+                        let follows = this.follow(rule.nonTerminal, new Set([...ignore]))
+                        follows.forEach(e => set.add(e))
+                    }
+                }
+            }))
+
+            return set
+        }
+        throw new Error(`Unknown symbole: "${s}" it is neither a terminal nor a non-terminal`)
     }
 
     /**
      * 
-     * @param {string} type 
-     * @returns 
+     * @param {Rule} rule 
+     * @returns {Set<string>}
      */
-    static idString(type: string): SymboleReader {
-        return new SymboleReader(/[a-zA-Z0-9][_a-zA-Z0-9]*/, str => new SymboleToken(type, str))
+    firstsOfRule(rule: Rule): Set<string> {
+
+        let terminal: Set<string> = new Set() // Result
+        let firsts: Set<string> = new Set() // Nonterminals for which we need to find firsts
+        let follow: Set<string> = new Set() // Nonterminals for which we need to find follows
+        let ignoreFirst: Set<string> = new Set() // Nonterminals for which we already found firsts
+        let ignoreFollow: Set<string> = new Set() // Nonterminals for which we already found follows
+
+        if (rule.symboles.length) // If not epsilon
+            if (this.terminals.has(rule.symboles[0])) // If first symbole is a terminal
+                terminal.add(rule.symboles[0])
+            else // If first symbole is a nonterminal, need to check for its first
+                firsts.add(rule.symboles[0])
+        else // If epsilon, need to check for follow
+            follow.add(rule.nonTerminal)
+
+        while (firsts.size || follow.size) { // If firsts nonterminal or follow of nonterminal need to be treated
+            for (let nonTerminal of [...firsts]) {
+                firsts.delete(nonTerminal)
+                ignoreFirst.add(nonTerminal)
+
+                if (!this.nonTerminals.has(nonTerminal)) throw new Error(`Unknown symbole: "${nonTerminal}" it is neither a terminal nor a non-terminal`)
+
+                for (let rule of this.rules.get(nonTerminal)) { // For each rules of the nonterminal
+                    if (rule.symboles.length) { // If not epsilon
+                        if (this.terminals.has(rule.symboles[0])) // If first symbole is a terminal
+                            terminal.add(rule.symboles[0])
+                        else if (!ignoreFirst.has(rule.symboles[0])) // If first symbole is a nonterminal and has not already been handled, need to check for its first
+                            firsts.add(rule.symboles[0])
+                    } else if (!ignoreFollow.has(nonTerminal)) // If epsilon, need to check for follow and has not already been handled
+                        follow.add(nonTerminal)
+                }
+            }
+
+            for (let nonTerminal of [...follow]) {
+
+                follow.delete(nonTerminal)
+                ignoreFollow.add(nonTerminal)
+
+                if (!this.nonTerminals.has(nonTerminal)) throw new Error(`Unknown symbole: ${nonTerminal}`)
+
+                if (nonTerminal == 'S') terminal.add('EOF') // If nonterminal is tree root, next is EOF
+                else {
+                    for (let [_, rules] of this.rules) for (let rule of rules) { // For every rule of every nonterminal
+                        if (rule.symboles.length == 0) { // If epsilon, ignore rule
+                            // if (!ignoreFollow.has(rule.nonTerminal)) // if not handled, need to find follow
+                            // follow.add(rule.nonTerminal)
+                        } else {
+                            let index = rule.symboles.indexOf(nonTerminal)
+                            if (index == -1) continue; // If rule rontaine nonterminal 
+                            index++
+                            if (index >= rule.symboles.length) { // If nonterminal is last symbole
+                                if (!ignoreFollow.has(rule.nonTerminal)) // if not handled, need to find follow
+                                    follow.add(rule.nonTerminal)
+                            } else { // If not last symbole
+                                let symbole = rule.symboles[index] // Get next symbole
+                                if (this.terminals.has(symbole)) // If such symbole is a terminal, take note
+                                    terminal.add(symbole)
+                                else if (!ignoreFirst.has(symbole)) // If sych symbole is a nonterminal and not already handled, need to first its firsts 
+                                    firsts.add(symbole)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return terminal
     }
+
+
+    parse(input: string) {
+        let symboleTokens: SymboleToken[] = this.getSymboleTokens(input)
+        let analysisTable: Map<string, Map<string, Rule>> = this.getAnalysisTable()
+
+        let EOF = new ASTStep('EOF')
+        let S = new ASTStep('S')
+        EOF.children.push(S)
+        let stack = [S, EOF]
+        while (stack.length != 0) { // Until stack is empty
+            let headSymbole: SymboleToken = symboleTokens.shift()
+            let headStack: ASTStep = stack.shift()
+
+            if (this.nonTerminals.has(headStack.type)) {
+                if (!analysisTable.get(headStack.type).get(headSymbole.type)) // if rules does not lead to head symbole
+                    throw `Unexpected symbole at line ${headSymbole.line} column ${headSymbole.column}: "${headSymbole.value}" while parsing rule ${headStack.type}`
+
+                // Replace stack head by rule symboles
+                for (let symbole of [...analysisTable.get(headStack.type).get(headSymbole.type).symboles].reverse()) {
+                    let asas = new ASTStep(symbole)
+                    headStack.rule = analysisTable.get(headStack.type).get(headSymbole.type)
+                    headStack.children.unshift(asas)
+                    stack.unshift(asas) // Pushback new step into stack
+                }
+
+                // Pushback symbole as it is not used
+                symboleTokens.unshift(headSymbole)
+                continue;
+            }
+
+            if (this.terminals.has(headStack.type)) {
+                if (headStack.type != headSymbole.type)
+                    throw `Unexpected symbole at line ${headSymbole.line} column ${headSymbole.column}: "${headSymbole.value}" while parsing rule ${headStack.type}`
+
+                headStack.value = headSymbole.value
+            }
+        }
+        return S
+    }
+
 
 }
 
