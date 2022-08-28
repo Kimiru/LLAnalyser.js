@@ -505,7 +505,7 @@ class LLAnalyser {
 
             if (this.nonTerminals.has(headStack.type)) {
                 if (!analysisTable.get(headStack.type).get(headSymbole.type)) // if rules does not lead to head symbole
-                    throw `Unexpected symbole at line ${headSymbole.line} column ${headSymbole.column}: "${headSymbole.value}" while parsing rule ${headStack.type}`
+                    throw `Unexpected symbole at line ${headSymbole.line} column ${headSymbole.column}: "${headSymbole.value}" while parsing rule for ${headStack.type}`
 
                 // Replace stack head by rule symboles
                 for (let symbole of [...analysisTable.get(headStack.type).get(headSymbole.type).symboles].reverse()) {

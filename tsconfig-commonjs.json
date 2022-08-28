@@ -6,7 +6,9 @@
         "outDir": "./commonjs",
         "lib": [
             "ES2021"
-        ]
+        ],
+        "strictNullChecks": false,
+        "strictFunctionTypes": true
     },
     "include": [
         "ts/**/*"
