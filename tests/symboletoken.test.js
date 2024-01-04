@@ -1,5 +1,6 @@
-const assert = require('assert').strict
-const { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } = require('../commonjs/LLAnalyser')
+import { describe, it } from 'mocha'
+import { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } from '../dist/index.js'
+import assert from 'assert/strict'
 
 describe('Symbole Token Tests', () => {
     it('Should copy type as value by default', () => {

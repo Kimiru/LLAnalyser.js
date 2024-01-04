@@ -1,5 +1,6 @@
-const assert = require('assert').strict
-const { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } = require('../commonjs/LLAnalyser')
+import { describe, it } from 'mocha'
+import { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } from '../dist/index.js'
+import assert from 'assert/strict'
 
 describe('Symbole Reader Tests', () => {
     it('Should not match if not at the begining of the string', () => {
@@ -12,18 +13,18 @@ describe('Symbole Reader Tests', () => {
 
         assert.match('abc ', symboleReader.regex)
     })
-    it('Should have a default tokenGenerator function', () => {
+    it('Should have a default token_generator function', () => {
         let symboleReader = new SymboleReader(/abc/)
 
-        let symboleToken = symboleReader.tokenGenerator('abc')
+        let symboleToken = symboleReader.token_generator('abc')
 
         assert.equal(symboleToken.type, 'abc')
         assert.equal(symboleToken.value, 'abc')
     })
-    it('Should be able to generate custom token using custom tokenGenerator function', () => {
+    it('Should be able to generate custom token using custom token_generator function', () => {
         let symboleReader = new SymboleReader(/abc/, str => new SymboleToken('a', 'b'))
 
-        let symboleToken = symboleReader.tokenGenerator('abc')
+        let symboleToken = symboleReader.token_generator('abc')
 
         assert.equal(symboleToken.type, 'a')
         assert.equal(symboleToken.value, 'b')

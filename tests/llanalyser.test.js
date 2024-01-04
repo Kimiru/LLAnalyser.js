@@ -1,5 +1,6 @@
-const assert = require('assert').strict
-const { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } = require('../commonjs/LLAnalyser')
+import { describe, it } from 'mocha'
+import { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } from '../dist/index.js'
+import assert from 'assert/strict'
 
 /**
  * 
@@ -25,65 +26,65 @@ describe('LLAnalyser Tests', () => {
     describe("Symboles, Terminals and Rules setup", () => {
         it('Should not throw an error when adding twice the same terminal', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a', 'a')
+            lla.add_terminal('a', 'a')
         })
         it('Should not throw an error when add two rule with the same non-terminak', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('A', ['a'], () => { }))
-            lla.addRule(new Rule('A', ['b'], () => { }))
+            lla.add_rule(new Rule('A', ['a'], () => { }))
+            lla.add_rule(new Rule('A', ['b'], () => { }))
         })
         it('Should throw an error when adding a terminal already used as a nonterminal inside a rule', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('A', [], () => { }))
+            lla.add_rule(new Rule('A', [], () => { }))
             assert.throws(() => {
-                lla.addTerminal('A')
+                lla.add_terminal('A')
             })
         })
         it('Should throw an error when adding a rule with a non-terminal already used as a terminal', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('A')
+            lla.add_terminal('A')
             assert.throws(() => {
-                lla.addRule(new Rule('A', [], () => { }))
+                lla.add_rule(new Rule('A', [], () => { }))
             })
         })
     })
     describe("Token parsing", () => {
         it('Should not throw an error when the input is of length zero', () => {
             let lla = new LLAnalyser()
-            lla.getSymboleTokens('')
+            lla.get_symbole_tokens('')
         })
         it('Should not throw an error when the input is missing', () => {
             let lla = new LLAnalyser()
-            lla.getSymboleTokens()
+            lla.get_symbole_tokens()
         })
         it('Should have an eof at then end', () => {
             let lla = new LLAnalyser()
-            let result = lla.getSymboleTokens('')
+            let result = lla.get_symbole_tokens('')
             assert.equal(result[result.length - 1].type, 'EOF')
         })
         it('Should throw an error when unknown characters is found', () => {
             let lla = new LLAnalyser()
 
             assert.throws(() => {
-                lla.getSymboleTokens('abc')
+                lla.get_symbole_tokens('abc')
             })
         })
         it('Should ignore null tokens', () => {
             let lla = new LLAnalyser()
-            lla.addSymboleReader(new SymboleReader(/\n/, _ => null))
+            lla.add_symbole_reader(new SymboleReader(/\n/, _ => null))
 
-            let result = lla.getSymboleTokens('\n')
+            let result = lla.get_symbole_tokens('\n')
             assert.equal(result.length, 1)
             assert.equal(result[0].type, 'EOF')
 
         })
         it('Should not throw an error when all characters are found and result should be correct', () => {
             let lla = new LLAnalyser()
-            lla.addSymboleReader(new SymboleReader(/\n/, _ => null))
-            lla.addSymboleReader(new SymboleReader(/[ab]+/))
-            lla.addSymboleReader(new SymboleReader(/c+/, str => new SymboleToken('c', str)))
+            lla.add_symbole_reader(new SymboleReader(/\n/, _ => null))
+            lla.add_symbole_reader(new SymboleReader(/[ab]+/))
+            lla.add_symbole_reader(new SymboleReader(/c+/, str => new SymboleToken('c', str)))
 
-            let result = lla.getSymboleTokens('acbb\ncc')
+            let result = lla.get_symbole_tokens('acbb\ncc')
 
             assert.equal(result.length, 5)
             assert.equal(result[0].type, 'a')
@@ -99,38 +100,38 @@ describe('LLAnalyser Tests', () => {
         })
     })
     describe('Custom parsing function', () => {
-        it('Should parse number "12.5e-6" with floatWithExponent SymboleReader', () => {
-            let sr = SymboleReader.floatWithExponent('nbr')
+        it('Should parse number "12.5e-6" with float_with_exponent SymboleReader', () => {
+            let sr = SymboleReader.float_with_exponent('nbr')
 
             let ok = sr.regex.exec('12.5e-6')
             assert.notEqual(ok, null)
         })
-        it('Should be able to parse "a" with idString SymboleReader', () => {
-            let sr = SymboleReader.idString('nbr')
+        it('Should be able to parse "a" with id_string SymboleReader', () => {
+            let sr = SymboleReader.id_string('nbr')
 
             let ok = sr.regex.exec('a')
             assert.notEqual(ok, null)
         })
-        it('Should be able to parse "a_" with idString SymboleReader', () => {
-            let sr = SymboleReader.idString('nbr')
+        it('Should be able to parse "a_" with id_string SymboleReader', () => {
+            let sr = SymboleReader.id_string('nbr')
 
             let ok = sr.regex.exec('a_')
             assert.notEqual(ok, null)
         })
-        it('Should be able to parse "a0_0De7_456totoBA" with idString SymboleReader', () => {
-            let sr = SymboleReader.idString('nbr')
+        it('Should be able to parse "a0_0De7_456totoBA" with id_string SymboleReader', () => {
+            let sr = SymboleReader.id_string('nbr')
 
             let ok = sr.regex.exec('a0_0De7_456totoBA')
             assert.notEqual(ok, null)
         })
-        it('Should be able to parse "mySimpleCamelCaseIDN1" with idString SymboleReader', () => {
-            let sr = SymboleReader.idString('nbr')
+        it('Should be able to parse "mySimpleCamelCaseIDN1" with id_string SymboleReader', () => {
+            let sr = SymboleReader.id_string('nbr')
 
             let ok = sr.regex.exec('mySimpleCamelCaseIDN1')
             assert.notEqual(ok, null)
         })
-        it('Should be able to parse "my_simple_snake_case_id_n_1" with idString SymboleReader', () => {
-            let sr = SymboleReader.idString('nbr')
+        it('Should be able to parse "my_simple_snake_case_id_n_1" with id_string SymboleReader', () => {
+            let sr = SymboleReader.id_string('nbr')
 
             let ok = sr.regex.exec('my_simple_snake_case_id_n_1')
             assert.notEqual(ok, null)
@@ -139,7 +140,7 @@ describe('LLAnalyser Tests', () => {
     describe('First of symbole', () => {
         it('Should return epsilon, when only rule is epsilon', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('S', []))
+            lla.add_rule(new Rule('S', []))
 
             let firsts = lla.first('S')
             let expected = new Set([null])
@@ -148,7 +149,7 @@ describe('LLAnalyser Tests', () => {
         })
         it('Should return an error when symbole is not known', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('S', ['a']))
+            lla.add_rule(new Rule('S', ['a']))
 
             assert.throws(() => {
                 lla.first('S')
@@ -157,10 +158,10 @@ describe('LLAnalyser Tests', () => {
         })
         it('Should return EOF, when multiple rules are epsilon', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('S', ['A']))
-            lla.addRule(new Rule('A', ['B']))
-            lla.addRule(new Rule('B', ['C']))
-            lla.addRule(new Rule('C', []))
+            lla.add_rule(new Rule('S', ['A']))
+            lla.add_rule(new Rule('A', ['B']))
+            lla.add_rule(new Rule('B', ['C']))
+            lla.add_rule(new Rule('C', []))
 
             let firsts = lla.first('C')
             let expected = new Set([null])
@@ -169,9 +170,9 @@ describe('LLAnalyser Tests', () => {
         })
         it('Should return null, when grammar is rigged', () => {
             let lla = new LLAnalyser()
-            lla.addRule(new Rule('S', ['A']))
-            lla.addRule(new Rule('B', ['C']))
-            lla.addRule(new Rule('C', []))
+            lla.add_rule(new Rule('S', ['A']))
+            lla.add_rule(new Rule('B', ['C']))
+            lla.add_rule(new Rule('C', []))
 
             let firsts = lla.first('C')
             let expected = new Set([null])
@@ -180,9 +181,9 @@ describe('LLAnalyser Tests', () => {
         })
         it('Should return first symbole when found', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a')
+            lla.add_terminal('a')
+            lla.add_rule(new Rule('S', ['a']))
 
-            lla.addRule(new Rule('S', ['a']))
 
             let firsts = lla.first('S')
             let expected = new Set(['a'])
@@ -191,10 +192,10 @@ describe('LLAnalyser Tests', () => {
 
         it('Should return first of next nonterminals when found', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a')
+            lla.add_terminal('a')
 
-            lla.addRule(new Rule('S', ['A']))
-            lla.addRule(new Rule('A', ['a']))
+            lla.add_rule(new Rule('S', ['A']))
+            lla.add_rule(new Rule('A', ['a']))
 
             let firsts = lla.first('S')
             let expected = new Set(['a'])
@@ -202,12 +203,12 @@ describe('LLAnalyser Tests', () => {
         })
         it('Should return first of next multiple nonterminals when found', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a')
+            lla.add_terminal('a')
 
-            lla.addRule(new Rule('S', ['A']))
-            lla.addRule(new Rule('A', ['B']))
-            lla.addRule(new Rule('B', ['C']))
-            lla.addRule(new Rule('C', ['a']))
+            lla.add_rule(new Rule('S', ['A']))
+            lla.add_rule(new Rule('A', ['B']))
+            lla.add_rule(new Rule('B', ['C']))
+            lla.add_rule(new Rule('C', ['a']))
 
             let firsts = lla.first('S')
             let expected = new Set(['a'])
@@ -233,37 +234,37 @@ describe('LLAnalyser Tests', () => {
         it('Should be empty when no rules', () => {
             let lla = new LLAnalyser()
 
-            let at = lla.getAnalysisTable()
+            let at = lla.get_analysis_table()
 
-            assert.equal(at.size, 1)
-            assert.equal(at.get('S').size, 1)
-            assert.equal(at.get('S').get('EOF'), null)
+            assert.equal(Object.keys(at).length, 1)
+            assert.equal(Object.keys(at['S']).length, 1)
+            assert.equal(at['S']['EOF'], null)
         })
         it('Should fill in with given rules', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a', 'b')
+            lla.add_terminal('a', 'b')
 
-            lla.addRule(
+            lla.add_rule(
                 new Rule('S', ['A']),
                 new Rule('A', ['a']),
                 new Rule('A', ['b']),
             )
 
-            let at = lla.getAnalysisTable()
+            let at = lla.get_analysis_table()
 
-            assert.equal(at.size, 2)
-            assert.equal(at.get('S').size, 3)
-            assert.equal(at.get('A').size, 3)
-            assert.equal(at.get('S').get('a'), lla.rules.get('S')[0])
-            assert.equal(at.get('S').get('b'), lla.rules.get('S')[0])
-            assert.equal(at.get('A').get('a'), lla.rules.get('A')[0])
-            assert.equal(at.get('A').get('b'), lla.rules.get('A')[1])
+            assert.equal(Object.keys(at).length, 2)
+            assert.equal(Object.keys(at['S']).length, 3)
+            assert.equal(Object.keys(at['A']).length, 3)
+            assert.equal(at['S']['a'], lla.rules['S'][0])
+            assert.equal(at['S']['b'], lla.rules['S'][0])
+            assert.equal(at['A']['a'], lla.rules['A'][0])
+            assert.equal(at['A']['b'], lla.rules['A'][1])
         })
         it('Should throw an error on conflict', () => {
             let lla = new LLAnalyser()
-            lla.addTerminal('a')
+            lla.add_terminal('a')
 
-            lla.addRule(
+            lla.add_rule(
                 new Rule('S', ['A']),
                 new Rule('S', ['B']),
                 new Rule('A', ['a']),
@@ -271,42 +272,43 @@ describe('LLAnalyser Tests', () => {
             )
 
             assert.throws(() => {
-                let at = lla.getAnalysisTable()
+                let at = lla.get_analysis_table()
             }, /AnalysisTable Conflict/)
 
         })
     })
     describe('Parsing string', () => {
         var lla = new LLAnalyser()
+        Rule.default_action = Rule.return_arguments_as_flat_array
         beforeEach(() => {
             lla = new LLAnalyser()
         })
 
         it('Should return a AST when string is empty and S->epsilon', () => {
-            lla.addRule(new Rule('S', []))
+            lla.add_rule(new Rule('S', []))
             let result = lla.parse('')
             assert.deepEqual(result, new ASTStep('S'))
         })
         it('Should return null when flattening AST', () => {
-            lla.addRule(new Rule('S', [], _ => null))
+            lla.add_rule(new Rule('S', [], _ => null))
             let result = lla.parse('')
             assert.equal(result.flatten(), null)
         })
         it('Should return AST with one levels', () => {
             let lla = new LLAnalyser()
-            lla.addSymboleReader(SymboleReader.idString('str'))
-            lla.addTerminal('str')
-            lla.addRule(new Rule('S', ['str']))
+            lla.add_symbole_reader(SymboleReader.id_string('str'))
+            lla.add_terminal('str')
+            lla.add_rule(new Rule('S', ['str']))
             let result = lla.parse('abc')
 
             assert.deepEqual(result.flatten(), ['abc'])
 
         })
         it('Should return AST with multiple levels', () => {
-            lla.addSymboleReader(SymboleReader.skipSpacing())
-            lla.addSymboleReader(SymboleReader.idString('str'))
-            lla.addTerminal('str')
-            lla.addRule(
+            lla.add_symbole_reader(SymboleReader.skip_spacing())
+            lla.add_symbole_reader(SymboleReader.id_string('str'))
+            lla.add_terminal('str')
+            lla.add_rule(
                 new Rule('S', ['A', 'B']),
                 new Rule('A', ['str']),
                 new Rule('B', ['str'])
@@ -316,19 +318,19 @@ describe('LLAnalyser Tests', () => {
             assert.deepEqual(result.flatten(), ['abc', 'def'])
         })
         it('Should read math (2+2)', () => {
-            lla.addSymboleReader(
+            lla.add_symbole_reader(
                 new SymboleReader(/[+]/),
                 new SymboleReader(/[-]/),
                 new SymboleReader(/[*]/),
                 new SymboleReader(/[/]/),
                 new SymboleReader(/[(]/),
                 new SymboleReader(/[)]/),
-                SymboleReader.skipSpacing(),
-                SymboleReader.skipCarriageReturn(),
-                SymboleReader.floatWithExponent('nbr'),
+                SymboleReader.skip_spacing(),
+                SymboleReader.skip_carriage_return(),
+                SymboleReader.float_with_exponent('nbr'),
             )
-            lla.addTerminal('nbr', '+', '-', '*', '/', '(', ')')
-            lla.addRule(
+            lla.add_terminal('nbr', '+', '-', '*', '/', '(', ')')
+            lla.add_rule(
                 new Rule('S', ['E']),
 
                 new Rule('E', ['T', 'Ep']),
@@ -349,19 +351,19 @@ describe('LLAnalyser Tests', () => {
             assert.deepEqual(ast.flatten(), ['(', 2, '+', 2, ')'])
         })
         it('Should read math 2*(2-4)/4+2', () => {
-            lla.addSymboleReader(
+            lla.add_symbole_reader(
                 new SymboleReader(/[+]/),
                 new SymboleReader(/[-]/),
                 new SymboleReader(/[*]/),
                 new SymboleReader(/[/]/),
                 new SymboleReader(/[(]/),
                 new SymboleReader(/[)]/),
-                SymboleReader.skipSpacing(),
-                SymboleReader.skipCarriageReturn(),
-                SymboleReader.floatWithExponent('nbr'),
+                SymboleReader.skip_spacing(),
+                SymboleReader.skip_carriage_return(),
+                SymboleReader.float_with_exponent('nbr'),
             )
-            lla.addTerminal('nbr', '+', '-', '*', '/', '(', ')')
-            lla.addRule(
+            lla.add_terminal('nbr', '+', '-', '*', '/', '(', ')')
+            lla.add_rule(
                 new Rule('S', ['E']),
 
                 new Rule('E', ['T', 'Ep']),

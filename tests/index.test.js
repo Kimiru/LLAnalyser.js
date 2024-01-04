@@ -1,7 +1,4 @@
-const assert = require('assert').strict
-const { SymboleReader, SymboleToken, Rule, ASTStep, LLAnalyser } = require('../commonjs/LLAnalyser')
-
-require('./symboletoken.test')
-require('./symbolereader.test')
-require('./rules.test')
-require('./llanalyser.test')
+import './symboletoken.test.js'
+import './symbolereader.test.js'
+import './rules.test.js'
+import './llanalyser.test.js'
